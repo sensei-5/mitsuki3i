@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>離緋緋的生日神社</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='%23c8243f' d='M2 7q18 4 36 0v5H2zM6 15h28v3H6zM9 12h4v26H9zM27 12h4v26h-4z'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Yuji+Syuku&display=swap">
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+  <!-- 背景：靜態景物（scenery.js）+ 飄落的櫻花瓣 -->
+  <div class="world" aria-hidden="true">
+    <canvas class="bg" id="bg"></canvas>
+    <canvas class="particles" id="particles"></canvas>
+  </div>
+
+  <!-- 右上角：背景音樂開關與音量 -->
+  <div class="controls">
+    <button type="button" class="music-btn" id="musicBtn" aria-pressed="true">
+      <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+      <svg class="icon-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path d="M3 3l18 18"/></svg>
+      <span id="musicLabel">音樂</span>
+    </button>
+    <input type="range" class="music-vol" id="musicVol" min="0" max="1" step="0.05" value="0.6" aria-label="音樂音量">
+  </div>
+
+  <main class="stage" id="stage">
+    <!-- 鳥居：torii.png 四周有大片透明邊，用外框只框住有畫的範圍 -->
+    <div class="torii" id="torii" aria-hidden="true">
+      <img src="torii.png" alt="" width="2237" height="2048" decoding="async">
+    </div>
+
+    <header class="greet" id="greet">
+      <h1 class="greet-title" id="greetTitle"><span class="nowrap">離緋緋</span> <span class="nowrap">生日快樂</span></h1>
+      <p class="greet-hint" id="hint">先把問卷當作香油錢，投進賽錢箱</p>
+    </header>
+
+    <!-- 香油錢箱（賽錢箱）：所有尺寸都用 em，打開後只改 font-size 就能整個縮小 -->
+    <div class="offering" id="offering" data-state="empty">
+      <div class="ob-inner" id="obInner">
+        <span class="ob-shadow"></span>
+        <svg class="ob-top" viewBox="0 0 260 60" aria-hidden="true">
+          <path class="ob-rim" d="M22 4 H238 L258 56 H2 Z"/>
+          <path class="ob-gap" d="M34 12 H226 L240 48 H20 Z"/>
+          <g class="ob-slats">
+            <path d="M40 12 h12 l-6 36 h-14 Z"/><path d="M68 12 h12 l-3 36 h-14 Z"/><path d="M96 12 h12 l-1 36 h-14 Z"/>
+            <path d="M124 12 h12 l1 36 h-14 Z"/><path d="M152 12 h12 l3 36 h-14 Z"/><path d="M180 12 h12 l5 36 h-14 Z"/>
+            <path d="M208 12 h12 l7 36 h-14 Z"/>
+          </g>
+          <path class="ob-rim-line" d="M22 4 H238 L258 56 H2 Z"/>
+        </svg>
+        <span class="ob-slot" id="obSlot"></span>
+        <div class="ob-body">
+          <div class="ob-beam"><span class="ob-plate">香油錢</span></div>
+          <div class="ob-door-frame" id="doorFrame">
+            <div class="ob-inside"><span class="ob-coins"></span><span class="ob-slip"></span><span class="ob-slip"></span><span class="ob-slip"></span></div>
+            <button class="ob-doors" id="door" type="button" aria-label="打開香油錢箱">
+              <span class="ob-leaf ob-leaf-l"></span><span class="ob-leaf ob-leaf-r"></span>
+            </button>
+            <button class="ob-import" id="importBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>
+              <span id="importLabel">導入問卷</span>
+            </button>
+          </div>
+        </div>
+        <span class="ob-base"></span>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+
+    <!-- 前景：垂下來的櫻花枝、離鏡頭很近的花瓣（在鳥居前面、卡片後面） -->
+    <canvas class="front" id="front" aria-hidden="true"></canvas>
+
+    <!-- 問卷卡片 -->
+    <section class="viewer" id="viewer" hidden aria-label="問卷">
+      <div class="card-slot" id="cardSlot" aria-live="polite"></div>
+      <nav class="card-nav" id="cardNav">
+        <button class="nav-btn" id="prevBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H6M11 6l-6 6 6 6"/></svg><span>前一張</span></button>
+        <span class="counter" id="counter"></span>
+        <button class="nav-btn" id="nextBtn" type="button"><span>下一張</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+      </nav>
+    </section>
+  </main>
+
+  <!-- 大家的祝福：所有人的繪馬掛成一面牆（結尾卡片「看大家的祝福」） -->
+  <section class="board" id="board" aria-label="大家的祝福" hidden>
+    <header class="board-head">
+      <h2 class="board-title" id="boardTitle">大家的祝福</h2>
+      <p class="board-count" id="boardCount"></p>
+    </header>
+    <div class="board-wall" id="boardWall"></div>
+    <div class="board-actions">
+      <button class="board-btn" id="boardSave" type="button">保存成圖片</button>
+      <button class="board-btn ghost" id="boardBack" type="button">回到結尾</button>
+    </div>
+
+    <!-- 點開單塊繪馬 -->
+    <div class="ema-zoom" id="emaZoom" role="dialog" aria-modal="true" aria-label="祝福" hidden>
+      <button class="zoom-nav" id="zoomPrev" type="button" aria-label="上一則"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="zoom-card" id="zoomCard">
+        <p class="zoom-name" id="zoomName"></p>
+        <p class="zoom-text" id="zoomText"></p>
+        <div class="zoom-foot">
+          <span class="zoom-pos" id="zoomPos"></span>
+          <button class="zoom-close" id="zoomClose" type="button">關閉</button>
+        </div>
+      </div>
+      <button class="zoom-nav" id="zoomNext" type="button" aria-label="下一則"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </section>
+
+  <div class="drop-hint" id="dropHint" hidden><p>放開，把問卷投進賽錢箱</p></div>
+
+  <script src="scenery.js?v=2"></script>
+  <script src="audio.js?v=1"></script>
+  <script src="main.js?v=3"></script>
+  <script src="board.js?v=1"></script>
+</body>
+</html>
