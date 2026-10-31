@@ -10,7 +10,7 @@ const TEXT = {
   end: ['離緋緋，', '生日快樂！'],
   fans: '位參拜者',
   anon: '匿名的參拜者',
-  labels: ['你叫甚麼名字！！！！！', '有甚麼想說的嗎'],
+  labels: ['你叫甚麼名字！！！！！', '對我最深的印象', '有甚麼想說的嗎'],
 };
 
 /* ==========================================================
@@ -95,7 +95,7 @@ function cleanLabel(s) {
   return s.replace(/[（(][^）)]{5,}[）)]/g, '').replace(/[（(]\s*公開\s*[）)]/g, '').trim();
 }
 
-// 只秀兩題：名字、想說的話（公開）。標了「不公開 / 私下」的欄位絕對不拿
+// 秀三題：名字、最深的印象、想說的話（公開）。標了「不公開 / 私下」的欄位絕對不拿
 const isPrivate = (h) => /不公開|非公開|私下|私密|悄悄話/.test(h);
 const isTime = (h) => /時間|timestamp/i.test(h);
 function pickColumns(header) {
@@ -103,27 +103,31 @@ function pickColumns(header) {
   const find = (re, taken) => header.findIndex((h, i) => ok(i, taken) && re.test(h));
   const taken = [];
   const name = find(/名字|稱呼|暱稱|名稱/, taken); if (name >= 0) taken.push(name);
+  // 印象題的說明裡有「說過的」，要比想說的話先找，才不會被當成想說的話
+  const impression = find(/印象/, taken); if (impression >= 0) taken.push(impression);
   let words = find(/公開/, taken);
   if (words < 0) words = find(/說|祝福|留言|話/, taken);
   if (words >= 0) taken.push(words);
-  // 找不到就依序取剩下的欄位
+  // 名字、想說的話找不到就依序取剩下的欄位；印象題找不到就不顯示
   const rest = header.map((h, i) => i).filter((i) => ok(i, taken));
-  return [name, words].map((c) => (c >= 0 ? c : rest.shift() ?? -1));
+  const [n, w] = [name, words].map((c) => (c >= 0 ? c : rest.shift() ?? -1));
+  return [n, impression, w];
 }
 
 function extractLetters(rows) {
   if (rows.length < 2) throw new Error('這個檔案裡沒有問卷回覆');
   const header = rows[0].map((h) => h.trim());
   const cols = pickColumns(header);
-  if (cols[1] < 0) throw new Error('看不懂這個檔案的欄位，請確認是問卷匯出的 CSV');
+  if (cols[2] < 0) throw new Error('看不懂這個檔案的欄位，請確認是問卷匯出的 CSV');
   const labels = cols.map((c, i) => (c >= 0 ? cleanLabel(header[c]) || TEXT.labels[i] : TEXT.labels[i]));
-  // 每一份回覆都保留，只略過兩題都空白的
+  // 每一份回覆都保留，只略過三題都空白的
   const letters = rows.slice(1)
     .map((r) => {
-      const [name, words] = cols.map((c) => (c >= 0 ? (r[c] ?? '').trim() : ''));
-      return { name, words };
+      const [name, impression, words] = cols.map((c) => (c >= 0 ? (r[c] ?? '').trim() : ''));
+      return { name, impression, words };
     })
-    .filter((l) => l.name || l.words);
+    .filter((l) => l.name || l.impression || l.words);
+  state.hasImpression = cols[1] >= 0;
   if (!letters.length) throw new Error('這個檔案裡沒有問卷回覆');
   return { labels, letters };
 }
@@ -352,10 +356,12 @@ function buildCard(i) {
     body.append(count, title, actions);
   } else {
     const L = state.letters[i];
-    const [l1, l2] = state.labels;
+    const [l1, l2, l3] = state.labels;
     const name = question(l1, L.name || TEXT.anon, 'q-name', 'q-name-text');
     if (!L.name) name.querySelector('.q-name-text').classList.add('is-anon');
-    body.append(name, question(l2, L.words, 'q-main', 'q-answer'));
+    body.append(name);
+    if (state.hasImpression) body.append(question(l2, L.impression, '', 'q-answer'));
+    body.append(question(l3, L.words, 'q-main', 'q-answer'));
 
     const remove = el('button', 'card-remove', '移除這張');
     remove.type = 'button';
