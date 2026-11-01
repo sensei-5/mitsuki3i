@@ -13,9 +13,17 @@ const Board = (() => {
   let zoomIndex = -1;
   const looks = new WeakMap(); // 每封問卷固定一組傾斜、大小、漂浮節奏（重新排版時不會亂跳）
 
+  // 繪馬上只放開頭一小段，太長的接「…」；全文點開繪馬看
+  const MAX_WORDS = 48;
+  const MAX_NAME = 14;
+  function clip(s, max) {
+    const chars = [...(s || '').replace(/\s*\n\s*/g, ' ').trim()];
+    return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : chars.join('');
+  }
+
   function lookOf(L) {
     if (!looks.has(L)) {
-      const len = [...(L.words || '')].length;
+      const len = [...clip(L.words, MAX_WORDS)].length;
       looks.set(L, {
         tilt: Math.random() * 7 - 3.5,
         // 短的字大、長的小一點，大小錯落比較像真的繪馬牆
@@ -44,10 +52,10 @@ const Board = (() => {
     const board = el('span', 'ema-board');
     const inner = el('span', 'ema-inner');
     inner.append(el('span', 'ema-hole'));
-    const name = el('span', 'ema-name', L.name || TEXT.anon);
+    const name = el('span', 'ema-name', clip(L.name, MAX_NAME) || TEXT.anon);
     if (!L.name) name.classList.add('is-anon');
     inner.append(name);
-    if (L.words) inner.append(el('span', 'ema-text', L.words));
+    if (L.words) inner.append(el('span', 'ema-text', clip(L.words, MAX_WORDS)));
     board.append(inner);
     b.append(el('span', 'ema-cord'), board);
     return b;
@@ -98,7 +106,12 @@ const Board = (() => {
     const name = $('zoomName');
     name.textContent = L.name || TEXT.anon;
     name.classList.toggle('is-anon', !L.name);
-    $('zoomText').textContent = L.words || '';
+    const text = $('zoomText');
+    text.textContent = L.words || '';
+    // 長篇的祝福字小一點，少捲幾次
+    const len = [...(L.words || '')].length;
+    text.dataset.len = len > 260 ? 'xl' : len > 110 ? 'l' : '';
+    $('zoomCard').scrollTop = 0;
     $('zoomPos').textContent = `${i + 1} / ${list.length}`;
     $('zoomPrev').disabled = i <= 0;
     $('zoomNext').disabled = i >= list.length - 1;

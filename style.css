@@ -740,6 +740,8 @@ body::after {
 .zoom-name.is-anon { color: var(--ink-soft); }
 .zoom-text { margin: 0.6em 0 0; font-size: 1.7em; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .zoom-text:empty { display: none; }
+.zoom-text[data-len="l"] { font-size: 1.4em; }
+.zoom-text[data-len="xl"] { font-size: 1.2em; line-height: 1.7; }
 .zoom-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2em; }
 .zoom-pos { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .zoom-close {
@@ -775,7 +777,8 @@ body::after {
 @media (max-width: 600px) {
   .ema-zoom { flex-wrap: wrap; align-content: center; }
   .zoom-card { order: -1; width: 100%; }
-  .zoom-text { font-size: 1.3em; }
+  .zoom-text, .zoom-text[data-len="l"] { font-size: 1.3em; }
+  .zoom-text[data-len="xl"] { font-size: 1.1em; }
 }
 
 
